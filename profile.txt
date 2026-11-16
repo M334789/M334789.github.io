@@ -14,7 +14,7 @@ expertise=E-commerce, Retail, Saas, Data Analysis
 
 education=Bachelor in Business Administration, Master in Digital Business Management
 
-yaguinis@hs-pforzheim.de
+email=yaguinis@hs-pforzheim.de
 linkedin=https://www.linkedin.com/in/valeria-yagui-nishii/
 
 about1=Bachelor: Business Administration
