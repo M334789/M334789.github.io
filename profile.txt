@@ -17,9 +17,9 @@ education=Bachelor in Business Administration, Master in Digital Business Manage
 email=yaguinis@hs-pforzheim.de
 linkedin=https://www.linkedin.com/in/valeria-yagui-nishii/
 
-about1=Bachelor: Business Administration
-about2=Master: Digital Business Management
-about3=
+about1=I am from Lima, Peru.
+about2=Bachelor: Business Administration-Peru
+about3=Master: Digital Business Management-Germany
 about4=
 
 phone= #00000
