@@ -6,20 +6,20 @@
 
 name=Valeria Yagui Nishii
 
-title1=Master in Digital Business Management
+title1=Student ID: 334789 | Master in Digital Business Management
 
 title2=Working Student Data Analyst - Philips
 
 expertise=E-commerce, Retail, Saas, Data Analysis
 
-education=Bachelor in Business Administration, Master in Digital Business Management
+education=Bachelor in Business Administration - Peru | Master in Digital Business Management - Germany
 
 email=yaguinis@hs-pforzheim.de
 linkedin=https://www.linkedin.com/in/valeria-yagui-nishii/
 
 about1=I am from Lima, Peru.
-about2=Bachelor: Business Administration-Peru
-about3=Master: Digital Business Management-Germany
+about2=I have a Bachelor Business Administration (Lima, Peru).
+about3=I am in the third semester of my Master in Digital Business Management (Pforzheim, Germany)
 about4=
 
 phone= #00000
