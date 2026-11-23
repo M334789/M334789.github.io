@@ -371,5 +371,26 @@
             }
         });
     </script>
+    <link href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css" rel="stylesheet" />
+<script type="module">
+  import { createChat } from 'https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js';
+
+  createChat({
+    webhookUrl: 'https://valeyagui.app.n8n.cloud/webhook/d5245e66-f6f7-49ab-8deb-9ff6f3b68b9b/chat',
+    mode: 'window',              // 'window' = floating bubble + popup
+    showWelcomeScreen: false,
+    initialMessages: [
+      'Hi there! 👋',
+      'How can I help you today?'
+    ],
+    i18n: {
+      en: {
+        title: 'Chat with us',
+        subtitle: 'We usually reply instantly',
+        inputPlaceholder: 'Type your question...',
+      },
+    },
+  });
+</script>
 </body>
 </html>
