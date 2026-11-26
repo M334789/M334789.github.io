@@ -176,9 +176,12 @@ if analyze:
             st.session_state["data"] = call_n8n(reviews)
             st.session_state["meta"] = meta
         except requests.exceptions.Timeout:
-            st.error("The analysis took too long. Please try again.")
+            st.error("The analysis took too long. Please try again in a minute.")
         except Exception as e:
-            st.error(f"Something went wrong during the analysis: {e}")
+            # Show a friendly message only. The real error (which can contain the webhook URL)
+            # goes to the server log, visible only to the app owner in "Manage app".
+            print(f"n8n call failed: {type(e).__name__}: {e}")
+            st.error("The analysis service is busy or unavailable right now. Please try again in a minute.")
 
 data = st.session_state.get("data")
 if not data:
