@@ -215,13 +215,26 @@ left, right = st.columns([1.7, 1])
 with left:
     with st.container(key="card_time"):
         if df["date"].notna().any():
-            st.markdown('<div class="card-title">Reviews over time</div>', unsafe_allow_html=True)
+            h1, h2 = st.columns([2, 1])
+            h1.markdown('<div class="card-title">Timeline: reviews over time</div>', unsafe_allow_html=True)
+            period = h2.radio("Group by", ["Day", "Week", "Month"], index=1, horizontal=True,
+                              label_visibility="collapsed")
+            freq = {"Day": "D", "Week": "W", "Month": "M"}[period]
             t = df.dropna(subset=["date"]).copy()
-            t["week"] = t["date"].dt.to_period("W").dt.start_time
-            weekly = t.groupby(["week", "sentiment"]).size().reset_index(name="reviews")
-            fig = px.bar(weekly, x="week", y="reviews", color="sentiment",
-                         color_discrete_map=SENTIMENT_COLORS, category_orders={"sentiment": SENTIMENT_ORDER})
-            fig.update_layout(barcornerradius=6, bargap=0.55, xaxis_title=None, yaxis_title="Reviews per week")
+            t["period"] = t["date"].dt.to_period(freq).dt.start_time
+            timeline = (t.groupby(["period", "sentiment"]).size()
+                        .unstack(fill_value=0).reindex(columns=SENTIMENT_ORDER, fill_value=0))
+            # Fill empty days/weeks/months with 0 so the lines don't skip them
+            full = pd.period_range(t["date"].min(), t["date"].max(), freq=freq).start_time
+            timeline = timeline.reindex(full, fill_value=0).rename_axis("period").reset_index()
+            long = timeline.melt(id_vars="period", var_name="sentiment", value_name="reviews")
+            fig = px.line(long, x="period", y="reviews", color="sentiment", markers=True,
+                          color_discrete_map=SENTIMENT_COLORS, category_orders={"sentiment": SENTIMENT_ORDER})
+            fig.update_traces(line=dict(width=3), marker=dict(size=7))
+            fig.update_layout(xaxis_title=None, yaxis_title=f"Reviews per {period.lower()}", hovermode="x unified")
+            fig.update_yaxes(rangemode="tozero", tickformat="d", dtick=1 if long["reviews"].max() <= 10 else None)
+            fig.update_xaxes(tickformat={"Day": "%b %d", "Week": "%b %d", "Month": "%b %Y"}[period],
+                             dtick="M1" if period == "Month" else None)
             st.plotly_chart(style_fig(fig), width="stretch")
         else:
             st.markdown('<div class="card-title">Sentiment by topic</div>', unsafe_allow_html=True)
