@@ -90,16 +90,31 @@ def kpi_card(label: str, value: str, sub: str, percent: float, color: str, ring_
     </div>"""
 
 
-def style_fig(fig: go.Figure, height: int = 320) -> go.Figure:
+FIGS: dict[str, go.Figure] = {}  # every chart, collected for the full report download
+
+
+def style_fig(fig: go.Figure, title: str, height: int = 340) -> go.Figure:
+    # White background so downloaded PNGs are white, not transparent
     fig.update_layout(
-        template="plotly_white", height=height, margin=dict(t=10, b=10, l=10, r=10),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        template="plotly_white", height=height, margin=dict(t=50, b=10, l=10, r=10),
+        title=dict(text=f"<b>{title}</b>", x=0, xanchor="left", font=dict(size=16, color="#1F2937")),
+        paper_bgcolor="#FFFFFF", plot_bgcolor="#FFFFFF",
         font=dict(color="#374151"), legend_title=None,
         legend=dict(orientation="h", y=-0.15, x=0),
     )
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(gridcolor="#F0EDF8")
     return fig
+
+
+def show_chart(fig: go.Figure, name: str, where=st) -> None:
+    """Show a chart with a camera button that downloads it as a white PNG."""
+    FIGS[name] = fig
+    where.plotly_chart(fig, width="stretch", config={
+        "displaylogo": False,
+        "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d"],
+        "toImageButtonOptions": {"format": "png", "filename": name.lower().replace(" ", "_"), "scale": 2},
+    })
 
 
 def call_n8n(reviews: list[dict]) -> dict:
@@ -218,9 +233,8 @@ left, right = st.columns([1.7, 1])
 with left:
     with st.container(key="card_time"):
         if df["date"].notna().any():
-            h1, h2 = st.columns([2, 1])
-            h1.markdown('<div class="card-title">Timeline: reviews over time</div>', unsafe_allow_html=True)
-            period = h2.radio("Group by", ["Day", "Week", "Month"], index=1, horizontal=True,
+            chart_slot = st.empty()  # chart goes here, above the Day/Week/Month buttons
+            period = st.radio("Group by", ["Day", "Week", "Month"], index=1, horizontal=True,
                               label_visibility="collapsed")
             freq = {"Day": "D", "Week": "W", "Month": "M"}[period]
             t = df.dropna(subset=["date"]).copy()
@@ -238,37 +252,28 @@ with left:
             fig.update_yaxes(rangemode="tozero", tickformat="d", dtick=1 if long["reviews"].max() <= 10 else None)
             fig.update_xaxes(tickformat={"Day": "%b %d", "Week": "%b %d", "Month": "%b %Y"}[period],
                              dtick="M1" if period == "Month" else None)
-            st.plotly_chart(style_fig(fig), width="stretch")
+            show_chart(style_fig(fig, f"Reviews over time (by {period.lower()})"), "Reviews over time", chart_slot)
         else:
-            st.markdown('<div class="card-title">Sentiment by topic</div>', unsafe_allow_html=True)
             tp = df.groupby(["topic", "sentiment"]).size().reset_index(name="reviews")
             fig = px.bar(tp, x="topic", y="reviews", color="sentiment",
                          color_discrete_map=SENTIMENT_COLORS, category_orders={"sentiment": SENTIMENT_ORDER})
             fig.update_layout(barcornerradius=6, bargap=0.55, xaxis_title=None, yaxis_title="Reviews")
-            st.plotly_chart(style_fig(fig), width="stretch")
+            show_chart(style_fig(fig, "Sentiment by topic"), "Sentiment by topic")
 
 with right:
     with st.container(key="card_topics"):
-        st.markdown('<div class="card-title">Topics</div>', unsafe_allow_html=True)
-        rows = ""
-        top_n = df["topic"].value_counts().max()
-        for topic, n in df["topic"].value_counts().items():
-            sub = df[df["topic"] == topic]["sentiment"].value_counts()
-            segs = "".join(
-                f'<div style="width:{100 * sub.get(s, 0) / top_n:.1f}%;'
-                f'background:{SENTIMENT_COLORS[s]}"></div>' for s in SENTIMENT_ORDER)
-            rows += (f'<div class="topic-row"><div class="topic-name">{topic}</div>'
-                     f'<div class="topic-bar">{segs}</div><div class="topic-count">{n}</div></div>')
-        legend = "".join(f'<span class="legend-dot" style="background:{SENTIMENT_COLORS[s]}"></span>{s.capitalize()}'
-                         for s in SENTIMENT_ORDER)
-        st.markdown(rows + f'<div style="font-size:0.8rem;color:#6B7280;margin-top:0.8rem">{legend}</div>',
-                    unsafe_allow_html=True)
+        tp = df.groupby(["topic", "sentiment"]).size().reset_index(name="reviews")
+        order = df["topic"].value_counts().index.tolist()
+        fig = px.bar(tp, x="reviews", y="topic", color="sentiment", orientation="h",
+                     color_discrete_map=SENTIMENT_COLORS,
+                     category_orders={"topic": order, "sentiment": SENTIMENT_ORDER})
+        fig.update_layout(barcornerradius=5, bargap=0.5, xaxis_title=None, yaxis_title=None)
+        show_chart(style_fig(fig, "Topics"), "Topics")
 
 # ---------- Row 2: donut + top issues ----------
 left, right = st.columns([1, 1.7])
 with left:
     with st.container(key="card_donut"):
-        st.markdown('<div class="card-title">Sentiment</div>', unsafe_allow_html=True)
         fig = go.Figure(go.Pie(
             labels=[s.capitalize() for s in SENTIMENT_ORDER], values=[counts[s] for s in SENTIMENT_ORDER],
             hole=0.68, sort=False, marker=dict(colors=[SENTIMENT_COLORS[s] for s in SENTIMENT_ORDER],
@@ -276,7 +281,7 @@ with left:
             textinfo="none", hovertemplate="%{label}: %{value} (%{percent})<extra></extra>"))
         fig.add_annotation(text=f"<b>{pct['positive']:.0f}%</b><br><span style='font-size:12px'>positive</span>",
                            showarrow=False, font=dict(size=22, color=GREEN))
-        st.plotly_chart(style_fig(fig, 300), width="stretch")
+        show_chart(style_fig(fig, "Sentiment"), "Sentiment")
 
 with right:
     with st.container(key="card_issues"):
@@ -312,3 +317,26 @@ with st.container(key="card_table"):
                                 "sentiment": "Sentiment", "topic": "Topic"})
     st.download_button("⬇️ Download results (CSV)", view.to_csv(index=False).encode("utf-8"),
                        "review_insights.csv", "text/csv", type="primary")
+
+# ---------- Full report download (all charts + KPIs + issues, white background) ----------
+parts = []
+for i, (name, f) in enumerate(FIGS.items()):
+    parts.append(f.to_html(full_html=False, include_plotlyjs="cdn" if i == 0 else False))
+kpis = "".join(
+    f'<div class="k"><div>{lbl}</div><b style="color:{c}">{v}</b></div>'
+    for lbl, v, c in [("Total reviews", total, PURPLE),
+                      ("Positive", f"{counts['positive']} ({pct['positive']:.0f}%)", GREEN),
+                      ("Neutral", f"{counts['neutral']} ({pct['neutral']:.0f}%)", YELLOW),
+                      ("Negative", f"{counts['negative']} ({pct['negative']:.0f}%)", RED)])
+issues = "".join(f"<li><b>{i['issue']}</b> ({i['mentions']} mentions): {i['summary']}<br>"
+                 f"<i>Suggestion: {i['suggestion']}</i></li>" for i in data.get("top_issues", []))
+report = f"""<!DOCTYPE html><html><head><meta charset="utf-8"><title>Review Insights Report</title>
+<style>body{{font-family:Arial,sans-serif;background:#fff;color:#1F2937;max-width:1000px;margin:30px auto;padding:0 20px}}
+.ks{{display:flex;gap:16px;margin:20px 0}}.k{{flex:1;border:1px solid #E5E7EB;border-radius:12px;padding:14px}}
+.k b{{font-size:26px}}li{{margin-bottom:10px}}</style></head><body>
+<h1>Review Insights Report</h1><div class="ks">{kpis}</div>
+<h2>Top 3 issues</h2><p>{data.get('overall_summary', '')}</p><ol>{issues}</ol>
+{''.join(parts)}</body></html>"""
+st.download_button("📊 Download full report (all charts)", report.encode("utf-8"),
+                   "review_insights_report.html", "text/html")
+st.caption("Tip: each chart also has a 📷 camera button (top-right corner when you hover) to download it as a PNG.")
